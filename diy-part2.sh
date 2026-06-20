@@ -119,3 +119,18 @@ config forwarding
         option src 'lan'
         option dest 'wan'
 EOF
+
+# ========================
+# 修复 autosamba 与 samba4 冲突（Lean 源码专用）
+# ========================
+
+# 1. 物理删除 Lean 自带的 autosamba 包（冲突根源）
+rm -rf package/lean/autosamba
+rm -rf package/feeds/*/autosamba 2>/dev/null
+
+# 2. 清理旧的 rootfs 残留（防止 opkg clash）
+rm -f build_dir/target-*/root-*/etc/hotplug.d/block/20-smb 2>/dev/null
+
+# 3. 保险：确保 .config 里没有偷偷选中
+sed -i '/CONFIG_PACKAGE_autosamba/d' .config 2>/dev/null
+sed -i '/CONFIG_PACKAGE_samba36/d' .config 2>/dev/null
