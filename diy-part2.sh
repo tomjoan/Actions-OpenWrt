@@ -1,6 +1,6 @@
 #!/bin/bash
 # diy-part2.sh —— After feeds install
-# 用途：固定 LAN/WAN、IP、主机名、DHCP、防火墙
+# 用途：LAN/WAN 绑定、IP、主机名、DHCP、防火墙、WAN 防扫描
 
 # ===== 1. 修改默认 LAN IP =====
 sed -i 's/192.168.1.1/192.168.56.1/g' package/base-files/files/bin/config_generate
@@ -31,6 +31,12 @@ config interface 'lan'
 config interface 'wan'
         option device 'eth3'
         option proto 'dhcp'
+
+config interface 'wan6'
+        option device 'eth3'
+        option proto 'dhcpv6'
+        option reqprefix 'auto'
+        option reqaddress 'try'
 EOF
 
 # ===== 4. DHCP 服务 =====
@@ -67,7 +73,7 @@ config dhcp 'wan'
         option ignore '1'
 EOF
 
-# ===== 5. 防火墙（LAN → WAN 转发）=====
+# ===== 5. 防火墙（安全模式 + 防 WAN 扫描）=====
 cat << 'EOF' > package/base-files/files/etc/config/firewall
 config defaults
         option input 'ACCEPT'
@@ -84,12 +90,30 @@ config zone
 
 config zone
         option name 'wan'
-        option network 'wan'
-        option input 'REJECT'
+        option network 'wan wan6'
+        option input 'DROP'
         option output 'ACCEPT'
-        option forward 'REJECT'
+        option forward 'DROP'
         option masq '1'
         option mtu_fix '1'
+        option family 'any'
+
+# ===== 6. 显式禁止 WAN Ping（IPv4 + IPv6）=====
+config rule
+        option name 'Block WAN Ping IPv4'
+        option src 'wan'
+        option proto 'icmp'
+        option icmp_type 'echo-request'
+        option target 'DROP'
+        option family 'ipv4'
+
+config rule
+        option name 'Block WAN Ping IPv6'
+        option src 'wan'
+        option proto 'icmp'
+        option icmp_type 'echo-request'
+        option target 'DROP'
+        option family 'ipv6'
 
 config forwarding
         option src 'lan'
