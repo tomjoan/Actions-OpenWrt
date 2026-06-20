@@ -1,20 +1,97 @@
 #!/bin/bash
-#
-# https://github.com/P3TERX/Actions-OpenWrt
-# File name: diy-part2.sh
-# Description: OpenWrt DIY script part 2 (After Update feeds)
-#
-# Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
-#
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
-#
+# diy-part2.sh —— After feeds install
+# 用途：固定 LAN/WAN、IP、主机名、DHCP、防火墙
 
-# Modify default IP
-#sed -i 's/192.168.1.1/192.168.50.5/g' package/base-files/files/bin/config_generate
+# ===== 1. 修改默认 LAN IP =====
+sed -i 's/192.168.1.1/192.168.56.1/g' package/base-files/files/bin/config_generate
 
-# Modify default theme
-#sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/Makefile
+# ===== 2. 修改主机名 =====
+sed -i "s/'OpenWrt'/'tom'/g" package/base-files/files/bin/config_generate
 
-# Modify hostname
-#sed -i 's/OpenWrt/P3TERX-Router/g' package/base-files/files/bin/config_generate
+# ===== 3. 网络接口（eth3=WAN，eth0-2=LAN）=====
+mkdir -p package/base-files/files/etc/config
+
+cat << 'EOF' > package/base-files/files/etc/config/network
+config interface 'loopback'
+        option device 'lo'
+        option proto 'static'
+        option ipaddr '127.0.0.1'
+        option netmask '255.0.0.0'
+
+config globals 'globals'
+        option ula_prefix 'fd00:ab:cd::/48'
+
+config interface 'lan'
+        option device 'eth0 eth1 eth2'
+        option proto 'static'
+        option ipaddr '192.168.56.1'
+        option netmask '255.255.255.0'
+        option ip6assign '60'
+
+config interface 'wan'
+        option device 'eth3'
+        option proto 'dhcp'
+EOF
+
+# ===== 4. DHCP 服务 =====
+cat << 'EOF' > package/base-files/files/etc/config/dhcp
+config dnsmasq
+        option domainneeded '1'
+        option boguspriv '1'
+        option filterwin2k '0'
+        option localise_queries '1'
+        option rebind_protection '1'
+        option rebind_localhost '1'
+        option local '/lan/'
+        option domain 'lan'
+        option expandhosts '1'
+        option nonegcache '0'
+        option authoritative '1'
+        option readethers '1'
+        option leasefile '/tmp/dhcp.leases'
+        option resolvfile '/tmp/resolv.conf.d/resolv.conf.auto'
+        option nonwildcard '1'
+
+config dhcp 'lan'
+        option interface 'lan'
+        option start '100'
+        option limit '150'
+        option leasetime '12h'
+        option dhcpv4 'server'
+        option dhcpv6 'server'
+        option ra 'server'
+        option ra_management '1'
+
+config dhcp 'wan'
+        option interface 'wan'
+        option ignore '1'
+EOF
+
+# ===== 5. 防火墙（LAN → WAN 转发）=====
+cat << 'EOF' > package/base-files/files/etc/config/firewall
+config defaults
+        option input 'ACCEPT'
+        option output 'ACCEPT'
+        option forward 'REJECT'
+        option synflood_protect '1'
+
+config zone
+        option name 'lan'
+        option network 'lan'
+        option input 'ACCEPT'
+        option output 'ACCEPT'
+        option forward 'ACCEPT'
+
+config zone
+        option name 'wan'
+        option network 'wan'
+        option input 'REJECT'
+        option output 'ACCEPT'
+        option forward 'REJECT'
+        option masq '1'
+        option mtu_fix '1'
+
+config forwarding
+        option src 'lan'
+        option dest 'wan'
+EOF
