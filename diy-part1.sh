@@ -1,16 +1,17 @@
 #!/bin/bash
-# diy-part1.sh —— Lean's OpenWrt (lede) + 国内 Gitee 镜像源
+# diy-part1.sh —— 只用官方 LEDE 源（最稳方案）
 
-# ===== 1. 写入 Lean lede 所需的 feeds（国内 Gitee 加速）=====
+# ===== 1. 清空并写入官方 feeds =====
+# 使用 cat > 确保文件内容干净，不残留任何第三方源
 cat > feeds.conf.default << 'EOF'
-src-git packages https://gitee.com/mirrors/openwrt-packages.git
-src-git luci https://gitee.com/mirrors/openwrt-luci.git
-src-git routing https://gitee.com/mirrors/openwrt-routing.git
-src-git telephony https://gitee.com/mirrors/openwrt-telephony.git
+src-git packages https://github.com/coolsnowwolf/packages
+src-git luci https://github.com/coolsnowwolf/luci.git;openwrt-25.12
+src-git routing https://github.com/coolsnowwolf/routing
+src-git telephony https://github.com/coolsnowwolf/telephony.git
 EOF
 
-# ===== 2. Git 稳定性优化 =====
+# ===== 2. Git 稳定性优化（防超时/断流）=====
 git config --global http.postBuffer 524288000
 git config --global http.lowSpeedLimit 1000
 git config --global http.lowSpeedTime 30
-export GIT_TERMINAL_PROMPT=0
+export GIT_TERMINAL_PROMPT=0 
