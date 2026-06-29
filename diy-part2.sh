@@ -8,7 +8,7 @@ sed -i 's/192.168.1.1/192.168.56.1/g' package/base-files/files/bin/config_genera
 # ===== 2. 修改主机名 =====
 sed -i "s/'OpenWrt'/'tom'/g" package/base-files/files/bin/config_generate
 
-# ===== 3. 网络接口（eth3=WAN，eth0-2=LAN）=====
+# ===== 3. 网络接口（eth2-3=WAN，eth0-1=LAN）=====
 mkdir -p package/base-files/files/etc/config
 
 cat << 'EOF' > package/base-files/files/etc/config/network
@@ -20,23 +20,56 @@ config interface 'loopback'
 
 config globals 'globals'
         option ula_prefix 'fd00:ab:cd::/48'
+        option packet_steering '1'
 
 config interface 'lan'
-        option device 'eth0 eth1 eth2'
         option proto 'static'
         option ipaddr '192.168.56.1'
         option netmask '255.255.255.0'
         option ip6assign '60'
+        option multipath 'off'
+        option device 'br-lan'
 
 config interface 'wan'
         option device 'eth3'
-        option proto 'dhcp'
+        option proto 'static'
+        option ipaddr '183.63.179.2'
+        option netmask '255.255.255.248'
+        option gateway '183.63.179.1'
+        option multipath 'off'
+        option metric '10'
 
 config interface 'wan6'
         option device 'eth3'
         option proto 'dhcpv6'
         option reqprefix 'auto'
         option reqaddress 'try'
+
+config interface 'docker'
+        option device 'docker0'
+        option proto 'none'
+        option auto '0'
+
+config device
+        option type 'bridge'
+        option name 'docker0'
+
+config device
+        option name 'br-lan'
+        option type 'bridge'
+        list ports 'eth0'
+        list ports 'eth1'
+        option stp '1'
+        option igmp_snooping '1'
+
+config interface 'wan2'
+        option proto 'static'
+        option device 'eth2'
+        option ipaddr '192.168.0.245'
+        option netmask '255.255.255.0'
+        option gateway '192.168.0.2'
+        option multipath 'off'
+        option metric '20'
 EOF
 
 # ===== 4. DHCP 服务 =====
