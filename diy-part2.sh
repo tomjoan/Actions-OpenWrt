@@ -164,6 +164,16 @@ rm -rf package/feeds/*/autosamba 2>/dev/null
 # 2. 清理旧的 rootfs 残留（防止 opkg clash）
 rm -f build_dir/target-*/root-*/etc/hotplug.d/block/20-smb 2>/dev/null
 
-# 3. 保险：确保 .config 里没有偷偷选中
-sed -i '/CONFIG_PACKAGE_autosamba/d' .config 2>/dev/null
-sed -i '/CONFIG_PACKAGE_samba36/d' .config 2>/dev/null
+# ========================
+# 跳过 GRUB 启动延迟（x86 专用）
+# ========================
+sed -i 's/CONFIG_GRUB_TIMEOUT=.*/CONFIG_GRUB_TIMEOUT=0/g' .config
+sed -i 's/CONFIG_GRUB_HIDDEN_TIMEOUT=.*/CONFIG_GRUB_HIDDEN_TIMEOUT=0/g' .config
+
+# 如果 .config 里没有这些配置，则追加
+grep -q "CONFIG_GRUB_TIMEOUT=" .config || echo "CONFIG_GRUB_TIMEOUT=0" >> .config
+grep -q "CONFIG_GRUB_HIDDEN_TIMEOUT=" .config || echo "CONFIG_GRUB_HIDDEN_TIMEOUT=0" >> .config
+grep -q "CONFIG_GRUB_TIMEOUT_STYLE=" .config || echo "CONFIG_GRUB_TIMEOUT_STYLE=hidden" >> .config
+grep -q "CONFIG_GRUB_DISABLE_OS_PROBER=" .config || echo "CONFIG_GRUB_DISABLE_OS_PROBER=y" >> .config
+
+echo "=== GRUB 启动延迟已设置为 0 ==="
